@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 0 * * *" # every day
+    - cron: "0 0 * * *" # 每天
   workflow_dispatch:
 
 jobs:
@@ -36,11 +36,12 @@ jobs:
           set -e
           for branch in $(git branch -r | grep 'upstream/' | grep -v '\->'); do
             branch=${branch#upstream/}
+            echo "Syncing branch $branch"
             git checkout $branch || git checkout -b $branch
-            git merge upstream/$branch --allow-unrelated-histories || {
+            if ! git merge upstream/$branch --allow-unrelated-histories; then
               echo "Merge conflict in branch $branch. Please resolve conflicts manually."
               exit 1
-            }
+            fi
           done
 
       - name: Push changes to fork
