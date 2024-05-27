@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 每天
+    - cron: "0 0 * * *" # every day
   workflow_dispatch:
 
 jobs:
@@ -15,43 +15,26 @@ jobs:
     if: ${{ github.event.repository.fork }}
 
     steps:
+      # Step 1: run a standard checkout action
       - name: Checkout target repo
         uses: actions/checkout@v3
+
+      # Step 2: run the sync action
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          fetch-depth: 0 # 获取所有分支的完整历史记录
+          upstream_sync_repo: antvis/G6VP.git
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
 
-      - name: Set up Git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Set test_mode true to run tests instead of the true action!!
+          test_mode: false
 
-      - name: Add upstream repository
-        run: git remote add upstream https://github.com/antvis/G6VP.git
-
-      - name: Fetch all branches from upstream
-        run: git fetch upstream
-
-      - name: Sync all branches
-        run: |
-          set -e
-          for branch in $(git branch -r | grep 'upstream/' | grep -v '\->'); do
-            branch=${branch#upstream/}
-            echo "Syncing branch $branch"
-            git checkout $branch || git checkout -b $branch
-            if ! git merge upstream/$branch --allow-unrelated-histories; then
-              echo "Merge conflict in branch $branch. Please resolve conflicts manually."
-              exit 1
-            fi
-          done
-
-      - name: Push changes to fork
-        if: success()
-        run: git push --all origin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
       - name: Sync check
         if: failure()
         run: |
-          echo "[Error] Merge conflict detected. Please resolve conflicts manually."
+          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次，详细教程请查看：https://github.com/antvis/G6VP.git"
+          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the detailed tutorial for instructions: https://github.com/Yidadaa/ChatGPT-Next-Web#enable-automatic-updates"
           exit 1
